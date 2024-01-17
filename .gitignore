@@ -18,6 +18,9 @@
 # along with Nanvix.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+# Custom rules.
+hdd.imglock
+
 # Default rules.
 *.o
 *.a
