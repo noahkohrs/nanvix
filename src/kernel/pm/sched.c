@@ -59,35 +59,35 @@ PUBLIC void resume(struct process *proc)
 		sched(proc);
 }
 
-/**
- * @brief Yields the processor.
- */
-PUBLIC void yield(void)
+__attribute__((unused))
+PRIVATE void __roundRobinScheduling(struct process *p, struct process *next)
 {
-	struct process *p;    /* Working process.     */
-	struct process *next; /* Next process to run. */
+	/* Choose a process to run next. */
 
-	/* Re-schedule process for execution. */
-	if (curr_proc->state == PROC_RUNNING)
-		sched(curr_proc);
-
-	/* Remember this process. */
-	last_proc = curr_proc;
-
-	/* Check alarm. */
-	for (p = FIRST_PROC; p <= LAST_PROC; p++)
-	{
-		/* Skip invalid processes. */
-		if (!IS_VALID(p))
-			continue;
-
-		/* Alarm has expired. */
-		if ((p->alarm) && (p->alarm < ticks))
-			p->alarm = 0, sndsig(p, SIGALRM);
+	p = (curr_proc);
+	
+	while (next == IDLE) {
+		if (p == LAST_PROC)
+			p = FIRST_PROC;
+		else
+			p++;
+		if (p->state == PROC_READY)
+			next = p;
 	}
 
+	/* Switch to next process. */
+	next->priority = PRIO_USER;
+	next->state = PROC_RUNNING;
+	next->counter = PROC_QUANTUM;
+	if (curr_proc != next)
+	 	switch_to(next);
+}
+
+__attribute__((unused))
+PRIVATE void __fifoScheduling(struct process *p, struct process *next)
+{
 	/* Choose a process to run next. */
-	next = IDLE;
+
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
 	{
 		/* Skip non-ready process. */
@@ -118,4 +118,38 @@ PUBLIC void yield(void)
 	next->counter = PROC_QUANTUM;
 	if (curr_proc != next)
 		switch_to(next);
+}
+
+/**
+ * @brief Yields the processor.
+ */
+PUBLIC void yield(void)
+{
+	struct process *p;	  /* Working process.     */
+	struct process *next; /* Next process to run. */
+
+	/* Re-schedule process for execution. */
+	if (curr_proc->state == PROC_RUNNING)
+		sched(curr_proc);
+
+	/* Remember this process. */
+	last_proc = curr_proc;
+
+	/* Check alarm. */
+
+	// Ignore
+	for (p = FIRST_PROC; p <= LAST_PROC; p++)
+	{
+		/* Skip invalid processes. */
+		if (!IS_VALID(p))
+			continue;
+
+		/* Alarm has expired. */
+		if ((p->alarm) && (p->alarm < ticks))
+			p->alarm = 0, sndsig(p, SIGALRM);
+	}
+
+	next = IDLE;
+
+	__roundRobinScheduling(p, next);
 }
