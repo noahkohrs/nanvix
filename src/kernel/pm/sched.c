@@ -60,31 +60,74 @@ PUBLIC void resume(struct process *proc)
 }
 
 __attribute__((unused))
-PRIVATE void __roundRobinScheduling(struct process *p, struct process *next)
+PRIVATE void
+__roundRobinScheduling(struct process *p, struct process *next)
 {
 	/* Choose a process to run next. */
 
 	p = (curr_proc);
-	
-	while (next == IDLE) {
+
+	do
+	{
 		if (p == LAST_PROC)
 			p = FIRST_PROC;
 		else
 			p++;
 		if (p->state == PROC_READY)
+		{
 			next = p;
-	}
+			break;
+		}
+	} while (p != curr_proc);
+
+	/* If no ready process is found, return. */
+	if (next == NULL)
+		return;
 
 	/* Switch to next process. */
 	next->priority = PRIO_USER;
 	next->state = PROC_RUNNING;
 	next->counter = PROC_QUANTUM;
 	if (curr_proc != next)
-	 	switch_to(next);
+		switch_to(next);
 }
 
 __attribute__((unused))
-PRIVATE void __fifoScheduling(struct process *p, struct process *next)
+PRIVATE void
+__priorityScheduling(struct process *p, struct process *next)
+{
+
+	int highest_priority = FIRST_PROC->priority;
+	p = FIRST_PROC;
+	for (p = FIRST_PROC; p <= LAST_PROC; p++)
+	{
+		/* Skip non-ready process. */
+		if (p->state != PROC_READY)
+			continue;
+
+		/*
+		 * Process with higher
+		 * priority found.
+		 */
+		if (p->priority < highest_priority)
+		{
+			next = p;
+			highest_priority = p->priority;
+		}
+	}
+
+	/* Switch to next process. */
+	next->state = PROC_RUNNING;
+	next->counter = PROC_QUANTUM;
+	if (curr_proc != next)
+		switch_to(next);
+}
+
+
+
+__attribute__((unused))
+PRIVATE void
+__fifoScheduling(struct process *p, struct process *next)
 {
 	/* Choose a process to run next. */
 
