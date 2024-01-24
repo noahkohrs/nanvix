@@ -23,6 +23,8 @@
 #include <nanvix/hal.h>
 #include <nanvix/pm.h>
 #include <signal.h>
+// Include random
+#include <nanvix/klib.h>
 
 /**
  * @brief Schedules a process to execution.
@@ -80,10 +82,6 @@ __roundRobinScheduling(struct process *next)
 		}
 	} while (p != curr_proc);
 
-	/* If no ready process is found, return. */
-	if (next == NULL)
-		return;
-
 	/* Switch to next process. */
 	next->priority = PRIO_USER;
 	next->state = PROC_RUNNING;
@@ -108,14 +106,13 @@ __priorityScheduling(struct process *next)
 		 * Process with higher
 		 * priority found.
 		 */
-		if (p->nice < next->nice  || next == IDLE)
+		if (p->nice < next->nice || next == IDLE)
 		{
 			next = p;
 		}
-		else if 	(p->nice == next->nice && 
-			 		 p->ktime + p->utime < next->ktime + next->utime)
+		else if (p->nice == next->nice &&
+				 p->ktime + p->utime < next->ktime + next->utime)
 			next = p;
-
 	}
 
 	/* Switch to next process. */
@@ -126,7 +123,104 @@ __priorityScheduling(struct process *next)
 		switch_to(next);
 }
 
+__attribute__((unused))
+PRIVATE void
+__randomScheduling(struct process *next)
+{
 
+	struct process *p ;
+
+	int nprocsReady = 0;
+	for (p = FIRST_PROC; p <= LAST_PROC; p++)
+	{
+		if (p->state == PROC_READY)
+		{
+			nprocsReady++;
+		}
+	}
+
+	if (nprocsReady == 0)
+	{
+		next = IDLE;
+	}
+	else
+	{
+		int random = (krand() % (nprocsReady)) + 1;
+		int i = 0;
+		for (p = FIRST_PROC; p <= LAST_PROC; p++)
+		{
+			if (p->state == PROC_READY)
+			{
+				i++;
+				if (i == random)
+				{
+					next = p;
+					break;
+				}
+			}
+			
+		}
+	}
+
+	next->priority = PRIO_USER;
+	next->state = PROC_RUNNING;
+	next->counter = PROC_QUANTUM;
+	if (curr_proc != next)
+		switch_to(next);
+}
+
+PRIVATE int __getProcessWeight(struct process *p)
+{
+	return (-p->nice + 40) * 20 + p->counter;
+}
+__attribute__((unused))
+PRIVATE void
+__lotteryScheduling(struct process *next)
+{
+
+	struct process *p;
+
+	int totalWeight = 0;
+	for (p = FIRST_PROC; p <= LAST_PROC; p++)
+	{
+		if (p->state == PROC_READY)
+		{
+			totalWeight += __getProcessWeight(p);
+		}
+	}
+
+	if (totalWeight == 0)
+	{
+		next = IDLE;
+	}
+	else
+	{
+		int random = (krand() % (totalWeight)) + 1;
+		int i = 0;
+		int found = FALSE;
+		for (p = FIRST_PROC; p <= LAST_PROC; p++)
+		{
+			if (p->state == PROC_READY)
+			{
+				i+= __getProcessWeight(p);
+				if (!found && i >= random)
+				{
+					next = p;
+					found = TRUE;
+				} else {
+					p->counter++;
+				}
+			}
+
+		}
+	}
+
+	next->priority = PRIO_USER;
+	next->state = PROC_RUNNING;
+	next->counter = PROC_QUANTUM;
+	if (curr_proc != next)
+		switch_to(next);
+}
 
 __attribute__((unused))
 PRIVATE void
@@ -198,5 +292,5 @@ PUBLIC void yield(void)
 
 	next = IDLE;
 
-	__priorityScheduling(next);
+	__randomScheduling(next);
 }
