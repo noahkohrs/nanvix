@@ -61,10 +61,10 @@ PUBLIC void resume(struct process *proc)
 
 __attribute__((unused))
 PRIVATE void
-__roundRobinScheduling(struct process *p, struct process *next)
+__roundRobinScheduling(struct process *next)
 {
 	/* Choose a process to run next. */
-
+	struct process *p;
 	p = (curr_proc);
 
 	do
@@ -94,11 +94,12 @@ __roundRobinScheduling(struct process *p, struct process *next)
 
 __attribute__((unused))
 PRIVATE void
-__priorityScheduling(struct process *p, struct process *next)
+__priorityScheduling(struct process *next)
 {
+	struct process *p;
 
-	int highest_priority = FIRST_PROC->priority;
-	p = FIRST_PROC;
+	int highest_nice = FIRST_PROC->nice;
+
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
 	{
 		/* Skip non-ready process. */
@@ -109,14 +110,19 @@ __priorityScheduling(struct process *p, struct process *next)
 		 * Process with higher
 		 * priority found.
 		 */
-		if (p->priority < highest_priority)
+		if (p->nice < highest_nice)
 		{
 			next = p;
-			highest_priority = p->priority;
+			highest_nice = p->priority;
+		} else if (p->nice == highest_nice) {
+			if (p->ktime + p->utime > next->ktime + p->ktime) {
+				next = p;
+			}
 		}
 	}
 
 	/* Switch to next process. */
+	next->priority = PRIO_USER;
 	next->state = PROC_RUNNING;
 	next->counter = PROC_QUANTUM;
 	if (curr_proc != next)
@@ -127,9 +133,10 @@ __priorityScheduling(struct process *p, struct process *next)
 
 __attribute__((unused))
 PRIVATE void
-__fifoScheduling(struct process *p, struct process *next)
+__fifoScheduling(struct process *next)
 {
 	/* Choose a process to run next. */
+	struct process *p;
 
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
 	{
@@ -194,5 +201,5 @@ PUBLIC void yield(void)
 
 	next = IDLE;
 
-	__roundRobinScheduling(p, next);
+	__roundRobinScheduling(next);
 }

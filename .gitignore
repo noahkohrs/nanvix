@@ -19,7 +19,7 @@
 #
 
 # Custom rules.
-hdd.imglock
+hdd.img.lock
 settings.json
 
 # Default rules.
