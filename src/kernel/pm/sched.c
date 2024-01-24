@@ -98,27 +98,24 @@ __priorityScheduling(struct process *next)
 {
 	struct process *p;
 
-	int highest_nice = FIRST_PROC->nice;
-
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
 	{
 		/* Skip non-ready process. */
-		if (p->state != PROC_READY)
+		if (p->state != PROC_READY || p == IDLE)
 			continue;
 
 		/*
 		 * Process with higher
 		 * priority found.
 		 */
-		if (p->nice < highest_nice)
+		if (p->nice < next->nice  || next == IDLE)
 		{
 			next = p;
-			highest_nice = p->priority;
-		} else if (p->nice == highest_nice) {
-			if (p->ktime + p->utime > next->ktime + p->ktime) {
-				next = p;
-			}
 		}
+		else if 	(p->nice == next->nice && 
+			 		 p->ktime + p->utime < next->ktime + next->utime)
+			next = p;
+
 	}
 
 	/* Switch to next process. */
@@ -201,5 +198,5 @@ PUBLIC void yield(void)
 
 	next = IDLE;
 
-	__roundRobinScheduling(next);
+	__priorityScheduling(next);
 }
