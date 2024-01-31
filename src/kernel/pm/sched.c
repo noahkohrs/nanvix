@@ -123,7 +123,7 @@ PRIVATE void __incrementCounters(struct process *next)
 PRIVATE int __getProcessWeight(struct process *p)
 {
 	// (-PRIO+60)/20
-	int w = (-p->priority + 60) / 20;
+	int w = ((-p->priority + 60) / 20)*10 + p->counter;
 	return w > 0 ? w : 1;
 }
 
