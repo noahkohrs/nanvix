@@ -23,15 +23,22 @@
 #include <nanvix/hal.h>
 #include <nanvix/pm.h>
 #include <signal.h>
-// Include random
 #include <nanvix/klib.h>
+#include <nanvix/syscall.h>
 
-/**
- * @brief Schedules a process to execution.
- *
- * @param proc Process to be scheduled.
- */
-PUBLIC void sched(struct process *proc)
+PRIVATE struct process * __priorityScheduling();
+PRIVATE struct process * __fifoScheduling();
+PRIVATE struct process * __randomScheduling();
+PRIVATE struct process * __roundRobinScheduling();
+PRIVATE struct process * __lotteryScheduling();
+
+
+	/**
+	 * @brief Schedules a process to execution.
+	 *
+	 * @param proc Process to be scheduled.
+	 */
+	PUBLIC void sched(struct process *proc)
 {
 	proc->state = PROC_READY;
 	proc->counter = 0;
@@ -61,6 +68,65 @@ PUBLIC void resume(struct process *proc)
 		sched(proc);
 }
 
+
+/**
+ * @brief Yields the processor.
+ */
+PUBLIC void yield(void)
+{
+	struct process *p;	  /* Working process.     */
+	struct process *next; /* Next process to run. */
+
+	/* Re-schedule process for execution. */
+	if (curr_proc->state == PROC_RUNNING)
+		sched(curr_proc);
+
+	/* Remember this process. */
+	last_proc = curr_proc;
+
+	/* Check alarm. */
+
+	// Ignore
+	for (p = FIRST_PROC; p <= LAST_PROC; p++)
+	{
+		/* Skip invalid processes. */
+		if (!IS_VALID(p))
+			continue;
+
+		/* Alarm has expired. */
+		if ((p->alarm) && (p->alarm < ticks))
+			p->alarm = 0, sndsig(p, SIGALRM);
+	}
+
+	next = __lotteryScheduling();
+
+	/* Switch to next process. */
+	next->priority = PRIO_USER;
+	next->state = PROC_RUNNING;
+	next->counter = PROC_QUANTUM;
+	if (curr_proc != next)
+		switch_to(next);
+}
+
+PRIVATE void __incrementCounters(struct process *next)
+{
+	struct process *p;
+	for (p = FIRST_PROC; p <= LAST_PROC; p++)
+	{
+		if (p->state != PROC_READY)
+			continue;
+		if (p != next)
+			p->counter++;
+	}
+}
+
+PRIVATE int __getProcessWeight(struct process *p)
+{
+	// (-PRIO+60)/20
+	int w = (-p->priority + 60) / 20;
+	return w > 0 ? w : 1;
+}
+
 __attribute__((unused))
 PRIVATE struct process *
 __roundRobinScheduling()
@@ -84,34 +150,7 @@ __roundRobinScheduling()
 		}
 	} while (p != curr_proc);
 
-	return next;
-}
-
-__attribute__((unused))
-PRIVATE struct process *
-__priorityScheduling()
-{
-	struct process *next = IDLE;
-	struct process *p;
-
-	for (p = FIRST_PROC; p <= LAST_PROC; p++)
-	{
-		/* Skip non-ready process. */
-		if (p->state != PROC_READY || p == IDLE)
-			continue;
-
-		/*
-		 * Process with higher
-		 * priority found.
-		 */
-		if (p->nice < next->nice || next == IDLE)
-		{
-			next = p;
-		}
-		else if (p->nice == next->nice &&
-				 p->ktime + p->utime < next->ktime + next->utime)
-			next = p;
-	}
+	__incrementCounters(next);
 
 	return next;
 }
@@ -122,13 +161,14 @@ __randomScheduling()
 {
 
 	struct process *next = IDLE;
-	struct process *p ;
+	struct process *p;
 
 	int nprocsReady = 0;
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
 	{
 		if (p->state == PROC_READY)
 		{
+			p->counter++;
 			nprocsReady++;
 		}
 	}
@@ -149,6 +189,7 @@ __randomScheduling()
 				if (i == random)
 				{
 					next = p;
+					next->counter--;
 					break;
 				}
 			}
@@ -158,49 +199,38 @@ __randomScheduling()
 	return next;
 }
 
-PRIVATE int __getProcessWeight(struct process *p)
-{
-	return (-p->nice + 40) * 20 + p->counter;
-}
 __attribute__((unused))
 PRIVATE struct process *
 __lotteryScheduling()
 {
-	struct process *next = IDLE;
-	struct process *p;
-
-	// Calculate total weight
-	int totalWeight = 0;
+	struct process *p;	  /* Working process.     */
+	struct process *next; /* Next process to run. */
+	int tickets = 0;
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
 	{
 		if (p->state == PROC_READY)
 		{
-			totalWeight += __getProcessWeight(p);
+			tickets += __getProcessWeight(p);
+			p->counter++;
 		}
 	}
-
-	// Process lottery
-	if (totalWeight == 0)
+	if (tickets == 0)
 	{
 		next = IDLE;
 	}
 	else
 	{
-		// Get the winning ticket
-		int random = (krand() % totalWeight);
+		int random = (krand() % tickets) + 1;
 		int i = 0;
-		int found = FALSE;
 		for (p = FIRST_PROC; p <= LAST_PROC; p++)
 		{
 			if (p->state == PROC_READY)
 			{
-				i+= __getProcessWeight(p);
-				if (!found && i > random)
+				i += __getProcessWeight(p);
+				if (i >= random)
 				{
 					next = p;
-					found = TRUE;
-				} else {
-					p->counter++;
+					break;
 				}
 			}
 		}
@@ -239,45 +269,43 @@ __fifoScheduling()
 		else
 			p->counter++;
 	}
-	
+
 	return next;
 }
 
-/**
- * @brief Yields the processor.
- */
-PUBLIC void yield(void)
+__attribute__((unused))
+PRIVATE struct process *
+__priorityScheduling()
 {
-	struct process *p;	  /* Working process.     */
-	struct process *next; /* Next process to run. */
+	struct process *next = IDLE;
+	struct process *p;
 
-	/* Re-schedule process for execution. */
-	if (curr_proc->state == PROC_RUNNING)
-		sched(curr_proc);
-
-	/* Remember this process. */
-	last_proc = curr_proc;
-
-	/* Check alarm. */
-
-	// Ignore
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
 	{
-		/* Skip invalid processes. */
-		if (!IS_VALID(p))
+		/* Skip non-ready process. */
+		if (p->state != PROC_READY || p == IDLE)
 			continue;
 
-		/* Alarm has expired. */
-		if ((p->alarm) && (p->alarm < ticks))
-			p->alarm = 0, sndsig(p, SIGALRM);
+		/*
+		 * Process with higher
+		 * priority found.
+		 */
+		if (p->nice < next->nice || next == IDLE)
+		{
+			p->counter++;
+			next = p;
+		}
+		else if (p->nice == next->nice &&
+				 p->ktime + p->utime < next->ktime + next->utime)
+		{
+			p->counter++;
+			next = p;
+		}
+		else
+		{
+			p->counter++;
+		}
 	}
 
-	next = __randomScheduling();
-
-	/* Switch to next process. */
-	next->priority = PRIO_USER;
-	next->state = PROC_RUNNING;
-	next->counter = PROC_QUANTUM;
-	if (curr_proc != next)
-		switch_to(next);
+	return next;
 }

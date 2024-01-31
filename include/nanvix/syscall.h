@@ -106,7 +106,7 @@
 	EXTERN pid_t sys_setpgrp(void);
 	EXTERN int sys_setuid(pid_t uid);
 	EXTERN pid_t sys_wait(int *stat_loc);
-
+	
 	/*
 	 * Duplicates a file descriptor.
 	 */

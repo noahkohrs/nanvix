@@ -21,6 +21,7 @@
 # Custom rules.
 hdd.img.lock
 settings.json
+lib/stvT2cty
 
 # Default rules.
 *.o
