@@ -62,11 +62,13 @@ PUBLIC void resume(struct process *proc)
 }
 
 __attribute__((unused))
-PRIVATE void
-__roundRobinScheduling(struct process *next)
+PRIVATE struct process *
+__roundRobinScheduling()
 {
 	/* Choose a process to run next. */
+	struct process *next = IDLE;
 	struct process *p;
+
 	p = (curr_proc);
 
 	do
@@ -82,18 +84,14 @@ __roundRobinScheduling(struct process *next)
 		}
 	} while (p != curr_proc);
 
-	/* Switch to next process. */
-	next->priority = PRIO_USER;
-	next->state = PROC_RUNNING;
-	next->counter = PROC_QUANTUM;
-	if (curr_proc != next)
-		switch_to(next);
+	return next;
 }
 
 __attribute__((unused))
-PRIVATE void
-__priorityScheduling(struct process *next)
+PRIVATE struct process *
+__priorityScheduling()
 {
+	struct process *next = IDLE;
 	struct process *p;
 
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
@@ -115,19 +113,15 @@ __priorityScheduling(struct process *next)
 			next = p;
 	}
 
-	/* Switch to next process. */
-	next->priority = PRIO_USER;
-	next->state = PROC_RUNNING;
-	next->counter = PROC_QUANTUM;
-	if (curr_proc != next)
-		switch_to(next);
+	return next;
 }
 
 __attribute__((unused))
-PRIVATE void
-__randomScheduling(struct process *next)
+PRIVATE struct process *
+__randomScheduling()
 {
 
+	struct process *next = IDLE;
 	struct process *p ;
 
 	int nprocsReady = 0;
@@ -158,15 +152,10 @@ __randomScheduling(struct process *next)
 					break;
 				}
 			}
-			
 		}
 	}
 
-	next->priority = PRIO_USER;
-	next->state = PROC_RUNNING;
-	next->counter = PROC_QUANTUM;
-	if (curr_proc != next)
-		switch_to(next);
+	return next;
 }
 
 PRIVATE int __getProcessWeight(struct process *p)
@@ -174,12 +163,13 @@ PRIVATE int __getProcessWeight(struct process *p)
 	return (-p->nice + 40) * 20 + p->counter;
 }
 __attribute__((unused))
-PRIVATE void
-__lotteryScheduling(struct process *next)
+PRIVATE struct process *
+__lotteryScheduling()
 {
-
+	struct process *next = IDLE;
 	struct process *p;
 
+	// Calculate total weight
 	int totalWeight = 0;
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
 	{
@@ -189,13 +179,15 @@ __lotteryScheduling(struct process *next)
 		}
 	}
 
+	// Process lottery
 	if (totalWeight == 0)
 	{
 		next = IDLE;
 	}
 	else
 	{
-		int random = (krand() % (totalWeight)) + 1;
+		// Get the winning ticket
+		int random = (krand() % totalWeight);
 		int i = 0;
 		int found = FALSE;
 		for (p = FIRST_PROC; p <= LAST_PROC; p++)
@@ -203,7 +195,7 @@ __lotteryScheduling(struct process *next)
 			if (p->state == PROC_READY)
 			{
 				i+= __getProcessWeight(p);
-				if (!found && i >= random)
+				if (!found && i > random)
 				{
 					next = p;
 					found = TRUE;
@@ -211,22 +203,17 @@ __lotteryScheduling(struct process *next)
 					p->counter++;
 				}
 			}
-
 		}
 	}
-
-	next->priority = PRIO_USER;
-	next->state = PROC_RUNNING;
-	next->counter = PROC_QUANTUM;
-	if (curr_proc != next)
-		switch_to(next);
+	return next;
 }
 
 __attribute__((unused))
-PRIVATE void
-__fifoScheduling(struct process *next)
+PRIVATE struct process *
+__fifoScheduling()
 {
 	/* Choose a process to run next. */
+	struct process *next = IDLE;
 	struct process *p;
 
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
@@ -252,13 +239,8 @@ __fifoScheduling(struct process *next)
 		else
 			p->counter++;
 	}
-
-	/* Switch to next process. */
-	next->priority = PRIO_USER;
-	next->state = PROC_RUNNING;
-	next->counter = PROC_QUANTUM;
-	if (curr_proc != next)
-		switch_to(next);
+	
+	return next;
 }
 
 /**
@@ -290,7 +272,12 @@ PUBLIC void yield(void)
 			p->alarm = 0, sndsig(p, SIGALRM);
 	}
 
-	next = IDLE;
+	next = __randomScheduling();
 
-	__randomScheduling(next);
+	/* Switch to next process. */
+	next->priority = PRIO_USER;
+	next->state = PROC_RUNNING;
+	next->counter = PROC_QUANTUM;
+	if (curr_proc != next)
+		switch_to(next);
 }
