@@ -98,7 +98,7 @@ PUBLIC void yield(void)
 			p->alarm = 0, sndsig(p, SIGALRM);
 	}
 
-	
+
 	// Possible implementations :
 
 	// __roundRobinScheduling()
@@ -131,7 +131,10 @@ PRIVATE void __incrementCounters(struct process *next)
 
 PRIVATE int __getProcessWeight(struct process *p)
 {
-	int w = ((-p->priority + 80) / 20)*10 + p->counter;
+	// Arbitrary weight function
+	int w = (-p->priority + 80)*2 + p->counter;
+	// Statement that should never be false, but just in case if we change the weight function,
+	// we should not have a negative weight
 	return w > 0 ? w : 1;
 }
 
