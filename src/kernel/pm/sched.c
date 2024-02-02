@@ -214,24 +214,24 @@ __attribute__((unused))
 PRIVATE struct process *
 __lotteryScheduling()
 {
-	struct process *p;	  /* Working process.     */
-	struct process *next; /* Next process to run. */
-	int tickets = 0;
+	struct process *p;
+	struct process *next;
+	int ntickets = 0;
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
 	{
 		if (p->state == PROC_READY)
 		{
-			tickets += __getProcessWeight(p);
+			ntickets += __getProcessWeight(p);
 			p->counter++;
 		}
 	}
-	if (tickets == 0)
+	if (ntickets == 0)
 	{
 		next = IDLE;
 	}
 	else
 	{
-		int random = (krand() % tickets) + 1;
+		int random = (krand() % ntickets) + 1;
 		int i = 0;
 		for (p = FIRST_PROC; p <= LAST_PROC; p++)
 		{
