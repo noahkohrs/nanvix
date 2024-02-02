@@ -98,7 +98,16 @@ PUBLIC void yield(void)
 			p->alarm = 0, sndsig(p, SIGALRM);
 	}
 
-	next = __lotteryScheduling();
+	
+	// Possible implementations :
+
+	// __roundRobinScheduling()
+	// __randomScheduling()     	(warning : sometime it seems to stop working for an unknown reason at the moment)
+	// __lotteryScheduling()
+	// __fifoScheduling()   		(the default one)
+	// __priorityScheduling()
+
+	next = __priorityScheduling();
 
 	/* Switch to next process. */
 	next->priority = PRIO_USER;
@@ -122,8 +131,7 @@ PRIVATE void __incrementCounters(struct process *next)
 
 PRIVATE int __getProcessWeight(struct process *p)
 {
-	// (-PRIO+60)/20
-	int w = ((-p->priority + 60) / 20)*10 + p->counter;
+	int w = ((-p->priority + 80) / 20)*10 + p->counter;
 	return w > 0 ? w : 1;
 }
 
