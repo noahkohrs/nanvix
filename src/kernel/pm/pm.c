@@ -27,6 +27,7 @@
 #include <nanvix/mm.h>
 #include <nanvix/pm.h>
 #include <nanvix/klib.h>
+#include <nanvix/sem.h>
 #include <sys/stat.h>
 #include <signal.h>
 #include <limits.h>
@@ -40,6 +41,11 @@ EXTERN struct pde idle_pgdir[];
  * @brief Idle process kernel stack.
  */
 PUBLIC char idle_kstack[KSTACK_SIZE];
+
+/**
+ * @brief Semaphore table.
+ */
+PUBLIC semaphore_t sems[SEM_MAX];
 
 /**
  * @brief Process table.
@@ -73,6 +79,14 @@ PUBLIC void pm_init(void)
 {
 	int i;             /* Loop index.      */
 	struct process *p; /* Working process. */
+
+	/* Initialize the semaphore table. */
+	for (i = 0; i < SEM_MAX; i++) {
+		sems[i].val = 0 ; 
+		sems[i].key = 0 ;
+		sems[i].proc = NULL ;
+	}
+
 
 	/* Initialize the process table. */
 	for (p = FIRST_PROC; p <= LAST_PROC; p++)
