@@ -14,7 +14,8 @@
     {
         int val;         /**< Semaphore value. */
         unsigned int key;   /**< Semaphore PID.   */
-        struct proc *proc;  /**< Semaphore owner.  */
+        struct process *processes_queue; /**< Processes queue. */
+        int valid; /**< Semaphore is valid. */
     } semaphore_t;
 
     #define MAX_SEMS 64     /**< Maximum number of semaphores. */
@@ -24,18 +25,6 @@
     */
     EXTERN semaphore_t sems[MAX_SEMS];  /**< Semaphore table. */
 
-    /*
-     * Get a semaphore
-     */
-    EXTERN int sys_semget(unsigned key);
 
-    /*
-     * Control operations on a semaphore
-     */
-    EXTERN int sys_semctl(int semid, int num, int cmd);
-
-    /*
-     * Perform operations on a semaphore
-     */
-    EXTERN int sys_semop(int semid, int op);
+    EXTERN void sem_init(void);
 #endif /* NANVIX_SEM_H_ */
