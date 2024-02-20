@@ -23,4 +23,5 @@ PUBLIC int sys_semctl(int semid, int num, int cmd) {
             selected_sem.valid = 0;
             return 0;
     }
+    return -1;
 }

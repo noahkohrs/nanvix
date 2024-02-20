@@ -8,7 +8,7 @@ PUBLIC int sys_semop(int semid, int op) {
 
     /* Work in progress, this is probably wrong in some way*/
 
-    if (semid < 0 || semid >= MAX_SEMS)
+    if (semid < 0 || semid >= SEM_MAX)
     {
         return -1;
     }
