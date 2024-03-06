@@ -71,7 +71,7 @@ PRIVATE struct
 	uint32_t bitmap[(SWP_SIZE/PAGE_SIZE) >> 5]; /**< Bitmap.          */
 } swap = {{0, }, {0, } };
 
-/**
+/** 
  * @brief Clears the swap space that is associated to a page.
  *
  * @param pg Page to be inspected.
