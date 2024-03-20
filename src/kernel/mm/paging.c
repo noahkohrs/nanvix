@@ -283,6 +283,25 @@ PRIVATE struct
 	addr_t addr;    /**< Address of the page. */
 } frames[NR_FRAMES] = {{0, 0, 0, 0},  };
 
+
+/**
+ * @brief Update the counters to respect an LRU/NFU policy.
+ * 
+ * @return PUBLIC 
+ */
+PUBLIC void update_nfu_counters(void) {
+	// Handle memory reference
+	struct pte* ptec;
+	for (int i = 0 ; i < NR_FRAMES ; i++)
+	{
+		ptec = getpte(curr_proc, frames[i].addr);
+		frames[i].count >>= 1;
+		frames[i].count += ptec->accessed << (sizeof(int) - 1);
+		ptec->accessed = 0;
+	}
+}
+
+
 /**
  * @brief Allocates a page frame.
  *
@@ -291,38 +310,25 @@ PRIVATE struct
  */
 PRIVATE int allocf(void)
 {
+	int min_count = INT32_MAX;
+	int min_page = -1;
 	int i;      /* Loop index.  */
-	int oldest; /* Oldest page. */
-
-	#define OLDEST(x, y) (frames[x].age < frames[y].age)
 
 	/* Search for a free frame. */
-	oldest = -1;
 	for (i = 0; i < NR_FRAMES; i++)
 	{
-		/* Found it. */
-		if (frames[i].count == 0)
-			goto found;
-
-		/* Local page replacement policy. */
-		if (frames[i].owner == curr_proc->pid)
-		{
-			/* Skip shared pages. */
-			if (frames[i].count > 1)
-				continue;
-
-			/* Oldest page found. */
-			if ((oldest < 0) || (OLDEST(i, oldest)))
-				oldest = i;
+		if (frames[i].count < min_count) {
+			min_count = frames[i].count;
+			min_page = i;
 		}
 	}
 
 	/* No frame left. */
-	if (oldest < 0)
+	if (min_count == INT32_MAX)
 		return (-1);
 
 	/* Swap page out. */
-	if (swap_out(curr_proc, frames[i = oldest].addr))
+	if (swap_out(curr_proc, frames[i = min_page].addr))
 		return (-1);
 
 found:

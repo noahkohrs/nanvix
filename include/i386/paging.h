@@ -37,17 +37,20 @@
 	/*
 	 * Page directory entry.
 	 */
-	struct pde
-	{
-		unsigned present  :  1; /* Present in memory? */
-		unsigned writable :  1; /* Writable page?     */
-		unsigned user     :  1; /* User page?         */
-		unsigned          :  2; /* Reserved.          */
-		unsigned accessed :  1; /* Accessed?          */
-		unsigned dirty    :  1; /* Dirty?             */
-		unsigned          :  2; /* Reserved.          */
-		unsigned          :  3; /* Unused.            */
-		unsigned frame    : 20; /* Frame number.      */
+
+EXTERN void update_nfu_counters(void);
+
+struct pde
+{
+	unsigned present : 1;  /* Present in memory? */
+	unsigned writable : 1; /* Writable page?     */
+	unsigned user : 1;	   /* User page?         */
+	unsigned : 2;		   /* Reserved.          */
+	unsigned accessed : 1; /* Accessed?          */
+	unsigned dirty : 1;	   /* Dirty?             */
+	unsigned : 2;		   /* Reserved.          */
+	unsigned : 3;		   /* Unused.            */
+	unsigned frame : 20;   /* Frame number.      */
 	};
 
 	/*

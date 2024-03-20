@@ -21,6 +21,7 @@
 #include <nanvix/hal.h>
 #include <nanvix/klib.h>
 #include <nanvix/pm.h>
+#include <i386/paging.h>
 
 /* Clock ticks since system initialization. */
 PUBLIC unsigned ticks = 0;
@@ -44,8 +45,10 @@ PRIVATE void do_clock()
 	curr_proc->utime++;
 
 	/* Give up processor time. */
-	if (--curr_proc->counter == 0)
+	if (--curr_proc->counter == 0) {
 		yield();
+
+	}
 }
 
 /*
