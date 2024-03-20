@@ -295,26 +295,44 @@ PRIVATE int allocf(void)
 {
 	struct pte* ptec;
 	//int initialClockHand = clockHand; // Save initial value of clockHand
-	do {
-        ptec = getpte(curr_proc,frames[clockHand].addr);
-		
-		if(ptec->accessed == 1){
-			ptec->accessed = 0;
-		}
-		else{
-			goto found;
+	while(1){
+
+		/* Found it. */
+		if (frames[clockHand].count == 0)
+            goto found;
+
+		/* Local page replacement policy. */
+        if (frames[clockHand].owner == curr_proc->pid)
+        {
+            /* Skip shared pages. */
+            if (frames[clockHand].count > 1)
+                continue;
+
+			ptec = getpte(curr_proc,frames[clockHand].addr);
+			
+			if(ptec->accessed == 1){
+				ptec->accessed = 0;
+			}
+			else{
+				goto clear;
+			}
 		}
 		// Move clock hand forward
 		clockHand = (clockHand + 1) % NR_FRAMES;
-	} while (1); //clockHand != initialClockHand); // Continue until we've gone through all frames
 
-found:
+	} //clockHand != initialClockHand); // Continue until we've gone through all frames
+
+clear:
 	/* Swap page out. */
 	if (swap_out(curr_proc, frames[clockHand].addr))
 		return (-1);
 
+found:
+	frames[clockHand].age = ticks;
+    frames[clockHand].count = 1;
+
 	clockHand = (clockHand + 1) % NR_FRAMES;
-	return clockHand;
+    return (clockHand-1);
 }
 
 
