@@ -310,15 +310,20 @@ PUBLIC void update_nfu_counters(void) {
  */
 PRIVATE int allocf(void)
 {
-	int min_count = INT32_MAX;
+#define INT32_MAX 2147483647
+	unsigned min_count = INT32_MAX;
 	int min_page = -1;
 	int i;      /* Loop index.  */
 
 	/* Search for a free frame. */
 	for (i = 0; i < NR_FRAMES; i++)
 	{
-		if (frames[i].count < min_count) {
-			min_count = frames[i].count;
+
+		if (frames[i].count == 0)
+			goto found;
+
+		if (frames[i].age < min_count) {
+			min_count = frames[i].age;
 			min_page = i;
 		}
 	}
@@ -328,12 +333,11 @@ PRIVATE int allocf(void)
 		return (-1);
 
 	/* Swap page out. */
-	if (swap_out(curr_proc, frames[i = min_page].addr))
+	if (swap_out(curr_proc, frames[min_page = min_page].addr))
 		return (-1);
 
 found:
-
-	frames[i].age = ticks;
+	frames[i].age = 0;
 	frames[i].count = 1;
 
 	return (i);

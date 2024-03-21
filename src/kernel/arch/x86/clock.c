@@ -47,7 +47,7 @@ PRIVATE void do_clock()
 	/* Give up processor time. */
 	if (--curr_proc->counter == 0) {
 		yield();
-
+		update_nfu_counters();
 	}
 }
 
