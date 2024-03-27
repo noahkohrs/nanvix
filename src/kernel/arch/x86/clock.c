@@ -47,6 +47,7 @@ PRIVATE void do_clock()
 	/* Give up processor time. */
 	if (--curr_proc->counter == 0) {
 		yield();
+		//if(ticks % 10 == 0) /* Update NFU counters every 10 ticks. It enchances the performance.*/
 		update_nfu_counters();
 	}
 }

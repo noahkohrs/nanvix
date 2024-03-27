@@ -295,8 +295,8 @@ PUBLIC void update_nfu_counters(void) {
 	for (int i = 0 ; i < NR_FRAMES ; i++)
 	{
 		ptec = getpte(curr_proc, frames[i].addr);
-		frames[i].count >>= 1;
-		frames[i].count += ptec->accessed << (sizeof(int) - 1);
+		frames[i].age >>= 1;
+		frames[i].age += ptec->accessed << (sizeof(int) - 1);
 		ptec->accessed = 0;
 	}
 }
@@ -318,13 +318,19 @@ PRIVATE int allocf(void)
 	/* Search for a free frame. */
 	for (i = 0; i < NR_FRAMES; i++)
 	{
-
 		if (frames[i].count == 0)
 			goto found;
 
-		if (frames[i].age < min_count) {
-			min_count = frames[i].age;
-			min_page = i;
+		if (frames[i].owner == curr_proc->pid)
+		{
+			/* Skip shared pages. */
+			if (frames[i].count > 1)
+				continue;
+			
+			if (frames[i].age < min_count) {
+				min_count = frames[i].age;
+				min_page = i;
+			}
 		}
 	}
 
@@ -333,7 +339,7 @@ PRIVATE int allocf(void)
 		return (-1);
 
 	/* Swap page out. */
-	if (swap_out(curr_proc, frames[min_page = min_page].addr))
+	if (swap_out(curr_proc, frames[i = min_page].addr))
 		return (-1);
 
 found:
