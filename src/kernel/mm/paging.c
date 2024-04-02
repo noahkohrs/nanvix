@@ -283,6 +283,7 @@ PRIVATE struct
 	addr_t addr;    /**< Address of the page. */
 } frames[NR_FRAMES] = {{0, 0, 0, 0},  };
 
+
 /**
  * @brief Allocates a page frame.
  *
@@ -291,46 +292,53 @@ PRIVATE struct
  */
 PRIVATE int allocf(void)
 {
-	int i;      /* Loop index.  */
-	int oldest; /* Oldest page. */
+    int i;        /* Loop index. */
+    struct pte *pg;   /* Page table entry. */
+    unsigned int tau = 10;   /* The value of tau. */
+    static int clock_hand = 0;  /* Clock hand position. */
 
-	#define OLDEST(x, y) (frames[x].age < frames[y].age)
-
-	/* Search for a free frame. */
-	oldest = -1;
-	for (i = 0; i < NR_FRAMES; i++)
-	{
-		/* Found it. */
-		if (frames[i].count == 0)
+    /* Start the clock hand at its current position. */
+    i = clock_hand;
+	//THE PROBLEM HERE IS THAT THE PERFORMANCE IS THE AS THE CLOCK PAGEMENT POLICY. 
+    /* Iterate through the frames in a circular manner. */
+    while(1){
+        /* If the frame is free, allocate it. */
+        if (frames[i].count == 0) {
 			goto found;
+        }
 
-		/* Local page replacement policy. */
-		if (frames[i].owner == curr_proc->pid)
-		{
-			/* Skip shared pages. */
-			if (frames[i].count > 1)
-				continue;
+        /* Local page replacement policy. */
+        if (frames[i].owner == curr_proc->pid) {
+            pg = getpte(curr_proc, frames[i].addr);
 
-			/* Oldest page found. */
-			if ((oldest < 0) || (OLDEST(i, oldest)))
-				oldest = i;
-		}
-	}
+            /* Skip shared pages and pages in the working set. */
+            if (frames[i].count > 1 || pg->accessed) {
+                /* Reset the accessed bit. */
+                pg->accessed = 0;
+                clock_hand = (i + 1) % NR_FRAMES;  /* Move the clock hand. */
+                continue;
+            }
 
-	/* No frame left. */
-	if (oldest < 0)
-		return (-1);
+            /* Check if the page is eligible for eviction based on tau. */
+            if (!pg->dirty && (frames[i].age > tau)) {
+                goto clear;
+            }
+        }
 
-	/* Swap page out. */
-	if (swap_out(curr_proc, frames[i = oldest].addr))
-		return (-1);
+        /* Move the clock hand. */
+        clock_hand = (i + 1) % NR_FRAMES;
+        i = clock_hand;
+    }
 
-found:
-
+	clear:
+	if (swap_out(curr_proc, frames[i].addr))
+        return -1;
+			
+	found:
 	frames[i].age = ticks;
-	frames[i].count = 1;
-
-	return (i);
+    frames[i].count = 1;
+    clock_hand = (i + 1) % NR_FRAMES;  /* Move the clock hand. */
+    return i;
 }
 
 /**
