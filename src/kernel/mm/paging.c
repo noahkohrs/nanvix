@@ -292,17 +292,17 @@ PRIVATE struct
 PRIVATE int allocf(void)
 {
 	int i;      /* Loop index.  */
-	int oldest; /* Oldest page. */
-
-	#define OLDEST(x, y) (frames[x].age < frames[y].age)
+	int victim = -1; /* Victim page. */
 
 	/* Search for a free frame. */
 	oldest = -1;
 	for (i = 0; i < NR_FRAMES; i++)
 	{
 		/* Found it. */
-		if (frames[i].count == 0)
-			goto found;
+		if (frames[i].count == 0) {
+			victim = i;
+			break;
+		}
 
 		/* Local page replacement policy. */
 		if (frames[i].owner == curr_proc->pid)
@@ -311,6 +311,9 @@ PRIVATE int allocf(void)
 			if (frames[i].count > 1)
 				continue;
 
+			pte_t ptec = getpte(curr_proc, frames[i].addr);
+
+			int r_bit = 
 			/* Oldest page found. */
 			if ((oldest < 0) || (OLDEST(i, oldest)))
 				oldest = i;
