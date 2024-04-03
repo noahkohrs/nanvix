@@ -295,7 +295,7 @@ PUBLIC void update_nru_each_clock_period() {
 			continue;
 		/* Reset the values */
 		ptec->accessed = 0;
-		ptec->dirty = 0;
+		//ptec->dirty = 0;
 	}
 }
 
@@ -321,13 +321,16 @@ PUBLIC void update_nru_each_clock_period() {
 	*/
 	#define CLASS(r, m) ((r << 1) | m)
 
+	/* Initilisation of victim_r and victim_m in order to have a CLASS = 5 where 5 is the maximum*/
+	victim_r_bit = 2;
+	victim_m_bit = 1;
 	/* Search for a free frame. */
 	for (i = 0; i < NR_FRAMES; i++)
 	{
 		/* Found it. */
 		if (frames[i].count == 0) {
 			victim = i;
-			break;
+			goto found;
 		}
 
 		/* Local page replacement policy. */
@@ -368,6 +371,7 @@ PUBLIC void update_nru_each_clock_period() {
 	if (victim_m_bit && swap_out(curr_proc, frames[victim].addr))
 		return (-1);
 
+found:
 	frames[victim].age = ticks;
 	frames[victim].count = 1;
 
