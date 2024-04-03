@@ -293,6 +293,17 @@ PRIVATE int allocf(void)
 {
 	int i;      /* Loop index.  */
 	int victim = -1; /* Victim page. */
+	int victim_r_bit; /* Victim r bit. */
+	int victim_m_bit; /* Victim m bit. */
+	struct pte *ptec = NULL;
+
+	/* Smart way to produce the classes following this pattern:
+		Class 0: not referenced, not modified.
+		Class 1: not referenced, modified.
+		Class 2: referenced, not modified.
+		Class 3: referenced, modified.
+	*/
+	#define CLASS(r, m) ((r << 1) | m)
 
 	/* Search for a free frame. */
 	oldest = -1;
@@ -311,29 +322,41 @@ PRIVATE int allocf(void)
 			if (frames[i].count > 1)
 				continue;
 
-			pte_t ptec = getpte(curr_proc, frames[i].addr);
+			ptec = getpte(curr_proc, frames[i].addr);
 
-			int r_bit = 
-			/* Oldest page found. */
-			if ((oldest < 0) || (OLDEST(i, oldest)))
-				oldest = i;
+			/* Getting the r & m bits */
+			int r_bit = ptec->accessed;
+			int m_bit = ptec->dirty;
+
+			int class = CLASS(r_bit, m_bit);
+
+			/* Finding the lowest-numbered non-empty class. */
+			if (victim == -1 || class < CLASS(victim_r_bit, victim_m_bit)) 
+			{
+				victim = i;
+				/* Saving the r & m bits to avoid recalling the pte */
+				victim_r_bit = r_bit;
+				victim_m_bit = m_bit;
+
+				/* Smallest class, we can skip next iterations */
+				if (class == 0)
+					break;
+			}
 		}
 	}
 
 	/* No frame left. */
-	if (oldest < 0)
+	if (victim < 0)
 		return (-1);
 
-	/* Swap page out. */
-	if (swap_out(curr_proc, frames[i = oldest].addr))
+	/* Swap page out if the victim page have been modified. */
+	if (victim_m_bit && swap_out(curr_proc, frames[i = oldest].addr))
 		return (-1);
 
-found:
+	frames[victim].age = ticks;
+	frames[victim].count = 1;
 
-	frames[i].age = ticks;
-	frames[i].count = 1;
-
-	return (i);
+	return (victim);
 }
 
 /**
