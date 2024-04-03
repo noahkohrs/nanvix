@@ -283,13 +283,29 @@ PRIVATE struct
 	addr_t addr;    /**< Address of the page. */
 } frames[NR_FRAMES] = {{0, 0, 0, 0},  };
 
-/**
- * @brief Allocates a page frame.
- *
- * @returns Upon success, the number of the frame is returned. Upon failure, a
- *          negative number is returned instead.
- */
-PRIVATE int allocf(void)
+PUBLIC void update_nru_each_clock_period() {
+	int i;
+	struct pte *ptec = NULL;
+	for (i = 0 ; i < NR_FRAMES; i++) {
+		if (frames[i].owner != curr_proc->pid)
+			continue;
+		ptec = getpte(curr_proc, frames[i].addr);
+		/* Skip free frames */
+		if (frames[i].count == 0)
+			continue;
+		/* Reset the values */
+		ptec->accessed = 0;
+		ptec->dirty = 0;
+	}
+}
+
+	/**
+	 * @brief Allocates a page frame.
+	 *
+	 * @returns Upon success, the number of the frame is returned. Upon failure, a
+	 *          negative number is returned instead.
+	 */
+	PRIVATE int allocf(void)
 {
 	int i;      /* Loop index.  */
 	int victim = -1; /* Victim page. */
@@ -306,7 +322,6 @@ PRIVATE int allocf(void)
 	#define CLASS(r, m) ((r << 1) | m)
 
 	/* Search for a free frame. */
-	oldest = -1;
 	for (i = 0; i < NR_FRAMES; i++)
 	{
 		/* Found it. */
@@ -350,7 +365,7 @@ PRIVATE int allocf(void)
 		return (-1);
 
 	/* Swap page out if the victim page have been modified. */
-	if (victim_m_bit && swap_out(curr_proc, frames[i = oldest].addr))
+	if (victim_m_bit && swap_out(curr_proc, frames[victim].addr))
 		return (-1);
 
 	frames[victim].age = ticks;

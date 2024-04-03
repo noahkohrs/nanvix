@@ -50,10 +50,12 @@
 		unsigned frame    : 20; /* Frame number.      */
 	};
 
-	/*
-	 * Page table entry.
-	 */
-	struct pte
+	EXTERN void update_nru_each_clock_period();
+
+		/*
+		 * Page table entry.
+		 */
+		struct pte
 	{
 		unsigned present  :  1; /* Present in memory? */
 		unsigned writable :  1; /* Writable page?     */
