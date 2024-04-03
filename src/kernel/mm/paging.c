@@ -291,46 +291,82 @@ PRIVATE struct
  */
 PRIVATE int allocf(void)
 {
-	int i;      /* Loop index.  */
-	int oldest; /* Oldest page. */
-
+    int i;          /* Loop index. */
 	#define OLDEST(x, y) (frames[x].age < frames[y].age)
+    int oldest = -1;
 
-	/* Search for a free frame. */
-	oldest = -1;
-	for (i = 0; i < NR_FRAMES; i++)
-	{
-		/* Found it. */
-		if (frames[i].count == 0)
+    struct pte *pg;
+    unsigned int tau = 1000;
+    int clean_page_index = -1;      // Index of a clean page if found
+	unsigned int virtual_time = curr_proc->utime + curr_proc->ktime;
+
+    for (i = 0; i < NR_FRAMES; i++)
+    {
+        /* Found an empty frame. */
+        if (frames[i].count == 0){
+			oldest = i;
 			goto found;
-
-		/* Local page replacement policy. */
-		if (frames[i].owner == curr_proc->pid)
-		{
-			/* Skip shared pages. */
-			if (frames[i].count > 1)
-				continue;
-
-			/* Oldest page found. */
-			if ((oldest < 0) || (OLDEST(i, oldest)))
-				oldest = i;
 		}
-	}
+            
 
-	/* No frame left. */
-	if (oldest < 0)
-		return (-1);
+        /* Local page replacement policy. */
+        if (frames[i].owner == curr_proc->pid)
+        {
+            pg = getpte(curr_proc, frames[i].addr);
 
-	/* Swap page out. */
-	if (swap_out(curr_proc, frames[i = oldest].addr))
-		return (-1);
+            /* Skip shared pages and pages in the working set. */
+            if (frames[i].count > 1)
+                continue;
+            
+
+			if(pg->accessed){
+				frames[i].age = virtual_time;
+				continue;
+			}
+
+			unsigned diff = virtual_time - frames[i].age;
+            /* Check if page is older than tau and not accessed. */
+            if (!pg->accessed && diff > tau) {
+                oldest = i;
+                goto clear;
+            }
+
+            /* Check if page has R = 0 */
+            if (!pg->accessed) {
+                if (oldest < 0 || OLDEST(i, oldest)) {
+                    oldest = i;
+                }
+            }
+
+            /* Check if page is clean */
+            if (!pg->dirty) {
+                clean_page_index = i;
+            }
+        }
+    }
+
+    /* If no eligible frame found, perform replacement based on eviction strategy. */
+    if (oldest < 0) {
+        if (clean_page_index >= 0) {
+            // Evict the last clean page
+            oldest = clean_page_index;
+        } else {
+            // Evict any page at random
+            oldest = virtual_time % NR_FRAMES;
+        }
+    }
+
+clear:
+    /* Swap page out. */
+    if (swap_out(curr_proc, frames[oldest].addr))
+        return -1;
 
 found:
+    /* Update the frame information. */
+    frames[oldest].age = virtual_time;
+    frames[oldest].count = 1;
 
-	frames[i].age = ticks;
-	frames[i].count = 1;
-
-	return (i);
+    return oldest;
 }
 
 /**
