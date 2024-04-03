@@ -297,6 +297,7 @@ PRIVATE int allocf(void)
     unsigned int tau = 10;   /* The value of tau. */
     static int clock_hand = 0;  /* Clock hand position. */
 
+	unsigned virtual_time = curr_proc->utime + curr_proc->ktime;
     /* Start the clock hand at its current position. */
     i = clock_hand;
 	//THE PROBLEM HERE IS THAT THE PERFORMANCE IS THE AS THE CLOCK PAGEMENT POLICY. 
@@ -312,15 +313,20 @@ PRIVATE int allocf(void)
             pg = getpte(curr_proc, frames[i].addr);
 
             /* Skip shared pages and pages in the working set. */
-            if (frames[i].count > 1 || pg->accessed) {
+            if (frames[i].count > 1) {
                 /* Reset the accessed bit. */
-                pg->accessed = 0;
                 clock_hand = (i + 1) % NR_FRAMES;  /* Move the clock hand. */
                 continue;
             }
 
+			if(pg->accessed){
+				pg->accessed = 0;
+				continue;
+			}
+			
+			unsigned diff = virtual_time - frames[i].age;
             /* Check if the page is eligible for eviction based on tau. */
-            if (!pg->dirty && (frames[i].age > tau)) {
+            if (!pg->dirty && (diff > tau)) {
                 goto clear;
             }
         }
@@ -330,12 +336,12 @@ PRIVATE int allocf(void)
         i = clock_hand;
     }
 
-	clear:
+clear:
 	if (swap_out(curr_proc, frames[i].addr))
         return -1;
 			
-	found:
-	frames[i].age = ticks;
+found:
+	frames[i].age = virtual_time;
     frames[i].count = 1;
     clock_hand = (i + 1) % NR_FRAMES;  /* Move the clock hand. */
     return i;
