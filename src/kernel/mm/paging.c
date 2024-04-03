@@ -362,7 +362,7 @@ PRIVATE int cpypg(struct pte *pg1, struct pte *pg2)
 
 	return (0);
 }
-
+/*Just the basic algorithm*/
 /**
  * @brief Allocates a user page.
  *
