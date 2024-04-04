@@ -285,6 +285,9 @@ PRIVATE struct
 
 /**
  * @brief Allocates a page frame.
+ * 
+ * This implementation is very similar to the FIFO page replacement policy with a small twist,
+ * which is the second chance that is given to the frame before it is swapped out.
  *
  * @returns Upon success, the number of the frame is returned. Upon failure, a
  *          negative number is returned instead.
@@ -323,6 +326,8 @@ trying_found:
 	}
 
 	ptec = getpte(curr_proc, frames[oldest].addr);
+
+	/* Giving a second chance to the frame */
 	if (ptec->accessed == 1)
 	{
 		ptec->accessed = 0;
