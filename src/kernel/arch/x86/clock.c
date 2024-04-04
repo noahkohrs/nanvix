@@ -47,6 +47,10 @@ PRIVATE void do_clock()
 	/* Give up processor time. */
 	if (--curr_proc->counter == 0) {
 		yield();
+
+		/* Optional if statement : Could affect performance in a good or a bad way*/
+		/* Default algorithm is calling the func every cycle*/
+		// if (ticks % 10)
 		update_nru_each_clock_period();
 	}
 		

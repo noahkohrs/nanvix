@@ -283,6 +283,10 @@ PRIVATE struct
 	addr_t addr;    /**< Address of the page. */
 } frames[NR_FRAMES] = {{0, 0, 0, 0},  };
 
+/**
+ * @brief Should be called each clock period to update the NRU algorithm. 
+ *  
+ */
 PUBLIC void update_nru_each_clock_period() {
 	int i;
 	struct pte *ptec = NULL;
@@ -299,13 +303,13 @@ PUBLIC void update_nru_each_clock_period() {
 	}
 }
 
-	/**
-	 * @brief Allocates a page frame.
-	 *
-	 * @returns Upon success, the number of the frame is returned. Upon failure, a
-	 *          negative number is returned instead.
-	 */
-	PRIVATE int allocf(void)
+/**
+ * @brief Allocates a page frame.
+ *
+ * @returns Upon success, the number of the frame is returned. Upon failure, a
+ *          negative number is returned instead.
+ */
+PRIVATE int allocf(void)
 {
 	int i;      /* Loop index.  */
 	int victim = -1; /* Victim page. */
